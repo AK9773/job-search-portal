@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.ak.dto.CreateUserDto;
 import com.ak.dto.UpdateUserDto;
 import com.ak.dto.UserDto;
+import com.ak.entity.Role;
 import com.ak.entity.Users;
 import com.ak.exception.ResourceNotFoundException;
 import com.ak.exception.UnauthorizedAccessException;
@@ -19,17 +20,20 @@ public class UserServiceImpl implements UserService {
 	private UserRepository userRepository;
 	private ModelMapper modelMapper;
 	private RedisService redisService;
-	private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+	private BCryptPasswordEncoder encoder;
 
-	public UserServiceImpl(UserRepository userRepository, ModelMapper modelMapper, RedisService redisService) {
+	public UserServiceImpl(UserRepository userRepository, ModelMapper modelMapper, RedisService redisService,
+			BCryptPasswordEncoder encoder) {
 		this.userRepository = userRepository;
 		this.modelMapper = modelMapper;
 		this.redisService = redisService;
+		this.encoder = encoder;
 	}
 
 	@Override
 	public UserDto insertUser(CreateUserDto userDto) {
 		Users user = modelMapper.map(userDto, Users.class);
+		user.setRole(Role.valueOf(userDto.getRole().toUpperCase()));
 		user.setPassword(encoder.encode(user.getPassword()));
 		Users savedUser = userRepository.save(user);
 		UserDto dto = modelMapper.map(savedUser, UserDto.class);
@@ -54,10 +58,12 @@ public class UserServiceImpl implements UserService {
 			existingUser.setPassword(encoder.encode(userDto.getPassword()));
 		}
 		if (userDto.getRole() != null) {
-			existingUser.setRole(userDto.getRole());
+			existingUser.setRole(Role.valueOf(userDto.getRole().toUpperCase()));
 		}
 		Users updatedUser = userRepository.save(existingUser);
+		
 		UserDto updatedUserDto = modelMapper.map(updatedUser, UserDto.class);
+		
 		redisService.deleteKey("user:" + updatedUser.getId());
 		redisService.setValue("user:" + updatedUser.getId(), updatedUserDto, 3600L);
 		return updatedUserDto;

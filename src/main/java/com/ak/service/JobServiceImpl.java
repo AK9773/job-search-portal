@@ -14,6 +14,7 @@ import com.ak.entity.Users;
 import com.ak.exception.ResourceNotFoundException;
 import com.ak.repository.JobRepository;
 import com.ak.utils.JobMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @Service
 public class JobServiceImpl implements JobService {
@@ -44,7 +45,9 @@ public class JobServiceImpl implements JobService {
 				pageable.getPageSize(), pageable.getSort());
 
 		// Try cache first
-		List<JobDto> cachedContent = redisService.getValue(cacheKey + ":content", List.class);
+		List<JobDto> cachedContent = redisService.getListValue(cacheKey + ":content",
+				new TypeReference<List<JobDto>>() {
+				});
 		Long totalElements = redisService.getValue(cacheKey + ":total", Long.class);
 
 		if (cachedContent != null && totalElements != null) {
@@ -113,7 +116,9 @@ public class JobServiceImpl implements JobService {
 				companyId != null ? companyId : "null", pageable.getPageNumber(), pageable.getPageSize(),
 				pageable.getSort());
 
-		List<JobDto> cachedContent = (List<JobDto>) redisService.getValue(cacheKey + ":content", List.class);
+		List<JobDto> cachedContent = redisService.getListValue(cacheKey + ":content",
+				new TypeReference<List<JobDto>>() {
+				});
 		Long totalElements = redisService.getValue(cacheKey + ":total", Long.class);
 
 		if (cachedContent != null && totalElements != null) {

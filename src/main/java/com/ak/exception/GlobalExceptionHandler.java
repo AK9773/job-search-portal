@@ -8,14 +8,14 @@ import org.springframework.boot.context.config.ConfigDataResourceNotFoundExcepti
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.ak.dto.ErrorResponse;
 import com.ak.dto.ValidationErrorResponse;
 
-@ControllerAdvice
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler(ConfigDataResourceNotFoundException.class)
@@ -25,6 +25,7 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(UnauthorizedAccessException.class)
+	
 	public ResponseEntity<ErrorResponse> unauthorizedAccessExceptionHandler(UnauthorizedAccessException ex) {
 		ErrorResponse error = new ErrorResponse(401, ex.getMessage(), LocalDateTime.now());
 		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);

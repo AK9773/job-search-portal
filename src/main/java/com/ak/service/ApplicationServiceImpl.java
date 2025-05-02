@@ -15,6 +15,7 @@ import com.ak.entity.Users;
 import com.ak.exception.ResourceNotFoundException;
 import com.ak.repository.ApplicationRepository;
 import com.ak.utils.ApplicationMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @Service
 public class ApplicationServiceImpl implements ApplicationService {
@@ -42,7 +43,9 @@ public class ApplicationServiceImpl implements ApplicationService {
 	public Page<ApplicationDto> getAllApplications(Pageable pageable) {
 		String cacheKey = String.format("application:page:%d:size:%d:sort:%s", pageable.getPageNumber(),
 				pageable.getPageSize(), pageable.getSort());
-		List<ApplicationDto> cachedContent = redisService.getValue(cacheKey + ":content", List.class);
+		List<ApplicationDto> cachedContent = redisService.getListValue(cacheKey + ":content",
+				new TypeReference<List<ApplicationDto>>() {
+				});
 		Long totalElements = redisService.getValue(cacheKey + ":total", Long.class);
 		if (cachedContent != null && totalElements != null) {
 			return new PageImpl<>(cachedContent, pageable, totalElements);
@@ -102,7 +105,9 @@ public class ApplicationServiceImpl implements ApplicationService {
 	public Page<ApplicationDto> getApplicationsByUser(Long userId, Pageable pageable) {
 		String cacheKey = String.format("userId:%d:application:page:%d:size:%d:sort:%s", userId,
 				pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
-		List<ApplicationDto> cachedContent = redisService.getValue(cacheKey + ":content", List.class);
+		List<ApplicationDto> cachedContent = redisService.getListValue(cacheKey + ":content",
+				new TypeReference<List<ApplicationDto>>() {
+				});
 		Long totalElements = redisService.getValue(cacheKey + ":total", Long.class);
 		if (cachedContent != null && totalElements != null) {
 			return new PageImpl<>(cachedContent, pageable, totalElements);

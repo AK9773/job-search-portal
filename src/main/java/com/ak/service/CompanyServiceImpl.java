@@ -12,6 +12,7 @@ import com.ak.entity.Company;
 import com.ak.exception.ResourceNotFoundException;
 import com.ak.repository.CompanyRepository;
 import com.ak.utils.CompanyMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @Service
 public class CompanyServiceImpl implements CompanyService {
@@ -33,7 +34,9 @@ public class CompanyServiceImpl implements CompanyService {
 	public Page<CompanyDto> getAllCompanies(Pageable pageable) {
 		String cacheKey = String.format("company:page:%d:size:%d:sort:%s", pageable.getPageNumber(),
 				pageable.getPageSize(), pageable.getSort());
-		List<CompanyDto> cachedContent = redisService.getValue(cacheKey + ":content", List.class);
+		List<CompanyDto> cachedContent = redisService.getListValue(cacheKey + ":content",
+				new TypeReference<List<CompanyDto>>() {
+				});
 		Long totalElements = redisService.getValue(cacheKey + ":total", Long.class);
 		if (cachedContent != null && totalElements != null) {
 			return new PageImpl<>(cachedContent, pageable, totalElements);
@@ -57,7 +60,7 @@ public class CompanyServiceImpl implements CompanyService {
 		Company savedCompany = companyRepository.save(company);
 		CompanyDto dto = companyMapper.convertToDto(savedCompany);
 		redisService.deleteKeysByPattern("*company:page:*");
-		redisService.setValue("application:" + savedCompany.getId(), dto, 3600L);
+		redisService.setValue("company:" + savedCompany.getId(), dto, 3600L);
 		return dto;
 	}
 
@@ -90,7 +93,9 @@ public class CompanyServiceImpl implements CompanyService {
 				name != null ? name : "null", industry != null ? industry : "null", pageable.getPageNumber(),
 				pageable.getPageSize(), pageable.getSort());
 
-		List<CompanyDto> cachedContent = redisService.getValue(cacheKey + ":content", List.class);
+		List<CompanyDto> cachedContent = redisService.getListValue(cacheKey + ":content",
+				new TypeReference<List<CompanyDto>>() {
+				});
 		Long totalElements = redisService.getValue(cacheKey + ":total", Long.class);
 
 		if (cachedContent != null && totalElements != null) {

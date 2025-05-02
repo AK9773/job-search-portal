@@ -1,6 +1,7 @@
 package com.ak.service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 import org.modelmapper.ModelMapper;
@@ -11,12 +12,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.ak.dto.ApiResponse;
 import com.ak.dto.LoginRequest;
 import com.ak.dto.RefreshTokenResponse;
 import com.ak.dto.UserDto;
 import com.ak.entity.Users;
+import com.ak.exception.ResourceNotFoundException;
 import com.ak.exception.UnauthorizedAccessException;
 import com.ak.repository.UserRepository;
 import com.ak.utils.JwtUtils;
@@ -50,41 +53,41 @@ public class AuthServiceImpl implements AuthService {
 		Authentication authentication = authManager.authenticate(
 				new UsernamePasswordAuthenticationToken(loginRequest.getName(), loginRequest.getPassword()));
 		if (authentication.isAuthenticated()) {
-			Users byName = userRepository.findByName(loginRequest.getName()).get(0);
-			addCookie(byName.getName(), request, response, "jwtToken");
-			String refreshToken = addCookie(byName.getName(), request, response, "refreshToken");
-			byName.setRefreshToken(refreshToken);
-			Users savedUser = userRepository.save(byName);
-			UserDto userDto = modelMapper.map(savedUser, UserDto.class);
-			return new ApiResponse<UserDto>(200, "Logged in Successfull", LocalDateTime.now(), userDto);
+			List<Users> byName = userRepository.findByName(loginRequest.getName());
+			if (byName.size() >= 1) {
+				Users users = byName.get(0);
+				addCookie(users.getName(), request, response, "jwtToken");
+				String refreshToken = addCookie(users.getName(), request, response, "refreshToken");
+				users.setRefreshToken(refreshToken);
+				Users savedUser = userRepository.save(users);
+				UserDto userDto = modelMapper.map(savedUser, UserDto.class);
+				return new ApiResponse<UserDto>(200, "Logged in Successfull", LocalDateTime.now(), userDto);
+			} else {
+				throw new ResourceNotFoundException("Invalid Username");
+			}
 		} else {
 			throw new UnauthorizedAccessException("Invalid Credential");
 		}
 	}
 
 	@Override
-	public ApiResponse<RefreshTokenResponse> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+	public ApiResponse<RefreshTokenResponse> refreshToken(HttpServletRequest request, HttpServletResponse response,
+			Cookie[] cookies) {
 
-		String refreshToken = null;
 		String username = null;
-		Cookie[] cookies = request.getCookies();
+		String refreshToken = Arrays.stream(cookies).filter(c -> "refreshToken".equals(c.getName()))
+				.map(Cookie::getValue).filter(StringUtils::hasText).findFirst()
+				.orElseThrow(() -> new UnauthorizedAccessException("Refresh token not found in cookies"));
 
-		if (cookies != null) {
-			for (Cookie cookie : cookies) {
-				if ("refreshToken".equals(cookie.getName()) && cookie.getValue() != null) {
-					refreshToken = cookie.getValue().trim();
-					if (!refreshToken.isEmpty()) {
-						try {
-							username = jwtUtils.extractUsername(refreshToken, jwtUtils.getRefreshSecret());
-						} catch (ExpiredJwtException e) {
-							return new ApiResponse<>(401, "Refresh token expired", LocalDateTime.now(), null);
-						} catch (Exception e) {
-							return new ApiResponse<>(401, "Invalid refresh token", LocalDateTime.now(), null);
-						}
-					}
-					break;
-				}
+		if (!refreshToken.isEmpty()) {
+			try {
+				username = jwtUtils.extractUsername(refreshToken, jwtUtils.getRefreshSecret());
+			} catch (ExpiredJwtException e) {
+				return new ApiResponse<>(401, "Refresh token expired", LocalDateTime.now(), null);
+			} catch (Exception e) {
+				return new ApiResponse<>(401, "Invalid refresh token", LocalDateTime.now(), null);
 			}
+
 		}
 
 		if (username == null || username.isEmpty()) {
@@ -117,7 +120,11 @@ public class AuthServiceImpl implements AuthService {
 
 	@Override
 	public ApiResponse<String> logout(HttpServletRequest request, HttpServletResponse response) {
-		String loggedInUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null) {
+			throw new UnauthorizedAccessException("Already logged out");
+		}
+		String loggedInUsername = authentication.getName();
 		Users loggedInUser = userRepository.findByName(loggedInUsername).get(0);
 		loggedInUser.setRefreshToken(null);
 		userRepository.save(loggedInUser);

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.ak.entity.UserPrincipal;
 import com.ak.entity.Users;
+import com.ak.exception.ResourceNotFoundException;
 import com.ak.repository.UserRepository;
 
 @Service
@@ -24,7 +25,7 @@ public class MyUserDetailsService implements UserDetailsService {
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 		List<Users> byName = userRepository.findByName(username);
 		if (byName.isEmpty()) {
-			throw new RuntimeException("No user found with name: " + username);
+			throw new ResourceNotFoundException("No user found with name: " + username);
 		}
 		Users user = byName.get(0);
 		

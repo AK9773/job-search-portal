@@ -1,12 +1,13 @@
 package com.ak.service;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -17,29 +18,42 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class RedisServiceImpl implements RedisService {
 
-	private RedisTemplate redisTemplate;
-
-	public RedisServiceImpl(RedisTemplate redisTemplate) {
-		super();
-		this.redisTemplate = redisTemplate;
-	}
+	private RedisTemplate<String, String> redisTemplate;
 
 	private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule())
 			.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+	public RedisServiceImpl(RedisTemplate<String, String> redisTemplate) {
+		this.redisTemplate = redisTemplate;
+	}
 
 	@Override
 	public <T> T getValue(String key, Class<T> entityClass) {
 
 		try {
-			Object object = redisTemplate.opsForValue().get(key);
+			String object = redisTemplate.opsForValue().get(key);
 			if (object == null) {
 				return null;
 			}
-			return mapper.readValue(object.toString(), entityClass);
+			return mapper.readValue(object, entityClass);
 		} catch (Exception e) {
 			log.error("Redis read error for key {}: {}", key, e.getMessage());
 			return null;
 
+		}
+	}
+
+	@Override
+	public <T> List<T> getListValue(String key, TypeReference<List<T>> typeReference) {
+		try {
+			String json = redisTemplate.opsForValue().get(key);
+			if (json == null) {
+				return null;
+			}
+			return mapper.readValue(json, typeReference);
+		} catch (Exception e) {
+			log.error("Redis read error for key {}: {}", key, e.getMessage(), e);
+			return null;
 		}
 	}
 
@@ -66,6 +80,10 @@ public class RedisServiceImpl implements RedisService {
 		if (keys != null && !keys.isEmpty()) {
 			redisTemplate.delete(keys);
 		}
+	}
+
+	public ObjectMapper getMapper() {
+		return mapper;
 	}
 
 }

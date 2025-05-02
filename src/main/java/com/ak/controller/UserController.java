@@ -32,7 +32,7 @@ public class UserController {
 	}
 
 	@PostMapping("/register")
-	public ResponseEntity<ApiResponse<UserDto>> insertUser(@RequestBody CreateUserDto user) {
+	public ResponseEntity<ApiResponse<UserDto>> insertUser(@Valid @RequestBody CreateUserDto user) {
 		return new ResponseEntity<ApiResponse<UserDto>>(new ApiResponse<UserDto>(201,
 				"User record Created successfully", LocalDateTime.now(), userService.insertUser(user)),
 				HttpStatus.CREATED);
